@@ -13,7 +13,10 @@ export default function CharacterDetailPage() {
       try {
         const res = await fetch(`${jikanAPI}/characters/${id}/full`);
         const data = await res.json();
-        setCharacter(data.data);
+        const charData = data.data || {};
+        if (!Array.isArray(charData.anime)) charData.anime = [];
+        if (!Array.isArray(charData.manga)) charData.manga = [];
+        setCharacter(charData);
       } catch (error) {
         console.error('Error al cargar personaje:', error);
       }
@@ -67,7 +70,7 @@ export default function CharacterDetailPage() {
 
         <TabsContent value="anime">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-x-6 gap-y-8 mt-6 justify-center">
-            {character.anime.slice(0, 6).map((anime) => (
+            {(character.anime || []).slice(0, 6).map((anime) => (
               <div
                 key={anime.anime.mal_id}
                 className="bg-[#161b22] rounded-lg overflow-hidden shadow hover:scale-[1.03] transition w-full max-w-[140px] mx-auto"
@@ -95,7 +98,7 @@ export default function CharacterDetailPage() {
 
         <TabsContent value="manga">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-x-6 gap-y-8 mt-6 justify-center">
-            {character.manga.slice(0, 6).map((m) => (
+            {(character.manga || []).slice(0, 6).map((m) => (
               <div
                 key={m.manga.mal_id}
                 className="bg-[#161b22] rounded-lg overflow-hidden shadow hover:scale-[1.03] transition w-full max-w-[140px] mx-auto"
