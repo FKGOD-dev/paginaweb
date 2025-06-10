@@ -5,7 +5,7 @@ import CharacterDetailPage from './pages/CharacterDetailPage.jsx';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
 import HomePage from './pages/HomePage.jsx';
-import ExplorePage from './pages/ExplorePage.jsx';
+import ExploreAnime from './pages/ExploreAnime.jsx';
 import ReaderPage from './pages/ReaderPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import ForumPage from './pages/ForumPage.jsx';
@@ -17,7 +17,7 @@ export default function App() {
       <div style={{ padding: '1rem' }}>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/explore" element={<ExploreAnime />} />
           <Route path="/reader" element={<ReaderPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/forum" element={<ForumPage />} />
