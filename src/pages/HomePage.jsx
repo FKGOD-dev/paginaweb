@@ -26,6 +26,7 @@ import GamificationPanel, { useGamification, XPNotification } from '../component
 import RankingSystem from '../components/rankings/RankingSystem';
 import AuthSystem from '../components/auth/AuthSystem';
 import MangaReader from '../components/reader/MangaReader';
+import animeDataService from '../services/animeDataService';
 
 const Homepage = () => {
   // Estados principales
@@ -45,80 +46,53 @@ const Homepage = () => {
   const { userStats, addXP } = useGamification();
   const { currentPage, totalPages, handlePageChange, resetPage } = usePagination(50, 12);
 
-  // Simular datos
+  // Cargar datos reales
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      
-      // Simular llamada a API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Featured content
-      setFeaturedContent([
-        {
-          id: 1,
-          title: "Jujutsu Kaisen",
-          type: "anime",
-          image: "https://picsum.photos/400/600?random=1",
-          description: "Yuji Itadori es un estudiante de instituto con habilidades físicas excepcionales.",
-          rating: 8.9,
-          year: 2024,
-          status: "En emisión"
-        },
-        {
-          id: 2,
-          title: "One Piece",
-          type: "manga",
-          image: "https://picsum.photos/400/600?random=2",
-          description: "Las aventuras de Monkey D. Luffy y su tripulación pirata.",
-          rating: 9.2,
-          year: 2024,
-          status: "En curso"
-        },
-        {
-          id: 3,
-          title: "Chainsaw Man",
-          type: "anime",
-          image: "https://picsum.photos/400/600?random=3",
-          description: "Denji es un joven que puede transformarse en Chainsaw Man.",
-          rating: 8.7,
-          year: 2024,
-          status: "Finalizado"
-        }
-      ]);
 
-      // Trending anime
-      setTrendingAnime(Array.from({ length: 12 }, (_, i) => ({
-        id: i + 1,
-        title: `Anime Trending ${i + 1}`,
-        image: `https://picsum.photos/300/400?random=${i + 10}`,
-        rating: (Math.random() * 2 + 7).toFixed(1),
-        episodes: Math.floor(Math.random() * 24) + 1,
-        status: ['En emisión', 'Finalizado', 'Próximamente'][Math.floor(Math.random() * 3)]
-      })));
+      try {
+        const { trending, topManga } = await animeDataService.getHomepageData();
 
-      // Popular manga
-      setPopularManga(Array.from({ length: 12 }, (_, i) => ({
-        id: i + 1,
-        title: `Manga Popular ${i + 1}`,
-        image: `https://picsum.photos/300/400?random=${i + 30}`,
-        rating: (Math.random() * 2 + 7).toFixed(1),
-        chapters: Math.floor(Math.random() * 200) + 50,
-        status: ['En curso', 'Finalizado', 'Hiatus'][Math.floor(Math.random() * 3)]
-      })));
+        setTrendingAnime(
+          trending.map((anime) => ({
+            id: anime.mal_id,
+            title: anime.title,
+            image: anime.images?.jpg?.image_url,
+            rating: anime.score,
+            episodes: anime.episodes,
+            status: anime.status,
+          }))
+        );
 
-      // Latest chapters
-      setLatestChapters(Array.from({ length: 8 }, (_, i) => ({
-        id: i + 1,
-        mangaTitle: `Manga ${i + 1}`,
-        chapterNumber: Math.floor(Math.random() * 100) + 1,
-        chapterTitle: `El gran momento`,
-        image: `https://picsum.photos/200/300?random=${i + 50}`,
-        releaseTime: `Hace ${Math.floor(Math.random() * 24)} horas`,
-        pages: Math.floor(Math.random() * 20) + 15
-      })));
+        setFeaturedContent(
+          trending.slice(0, 3).map((anime) => ({
+            id: anime.mal_id,
+            title: anime.title,
+            type: 'anime',
+            image: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url,
+            description: anime.synopsis,
+            rating: anime.score,
+            year: anime.year,
+            status: anime.status,
+          }))
+        );
 
-      setLoading(false);
+        setPopularManga(
+          topManga.map((manga) => ({
+            id: manga.mal_id,
+            title: manga.title,
+            image: manga.images?.jpg?.image_url,
+            rating: manga.score,
+            chapters: manga.chapters,
+            status: manga.status,
+          }))
+        );
+      } catch (error) {
+        console.error('Error fetching homepage data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();
