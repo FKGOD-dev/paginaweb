@@ -1,5 +1,6 @@
 // src/components/AnimeVerseApp.jsx
 import React, { useState, useEffect } from 'react';
+import MainNavigation from './navigation/MainNavigation';
 import { 
   BookOpen,
   Search,
@@ -78,22 +79,6 @@ import {
 // Simular un contexto de usuario
 const UserContext = React.createContext();
 
-// Hook para el tema
-const useTheme = () => {
-  const [theme, setTheme] = useState('dark');
-
-  useEffect(() => {
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
-  return { theme, toggleTheme };
-};
-
 // Componente principal de la aplicación
 const AnimeVerseApp = () => {
   const [currentPage, setCurrentPage] = useState('home');
@@ -108,7 +93,6 @@ const AnimeVerseApp = () => {
     novelsCount: 0,
     loading: true
   });
-  const { theme, toggleTheme } = useTheme();
 
   // Cargar estadísticas reales de la plataforma (simuladas)
   useEffect(() => {
@@ -179,13 +163,10 @@ const AnimeVerseApp = () => {
     <UserContext.Provider value={{ user, setUser, addNotification }}>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
         {/* Navigation */}
-        <MainNavigation 
+        <MainNavigation
           currentUser={user}
           onAuthModal={() => setShowAuthModal(true)}
           onNavigate={handleNavigation}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          notifications={notifications} // Pasar notificaciones reales
         />
 
         {/* Main Content */}
@@ -217,215 +198,6 @@ const AnimeVerseApp = () => {
         {user && <ToastContainer notifications={notifications} />}
       </div>
     </UserContext.Provider>
-  );
-};
-
-// Navegación principal
-const MainNavigation = ({ currentUser, onAuthModal, onNavigate, theme, onToggleTheme, notifications = [] }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const navigationItems = [
-    { id: 'home', label: 'Inicio', icon: Home, href: '/' },
-    { id: 'anime', label: 'Anime', icon: Play, href: '/anime' },
-    { id: 'manga', label: 'Manga', icon: BookOpen, href: '/manga' },
-    { id: 'calendar', label: 'Calendario', icon: Calendar, href: '/calendar' },
-    { id: 'ranking', label: 'Ranking', icon: Trophy, href: '/ranking' },
-    { id: 'community', label: 'Comunidad', icon: Users, href: '/community' },
-    { id: 'novels', label: 'Novelas', icon: Edit3, href: '/novels' },
-    { id: 'lists', label: 'Listas', icon: List, href: '/lists' }
-  ];
-
-  const unreadNotifications = notifications.filter(n => !n.read).length;
-
-  return (
-    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-            
-            <div 
-              className="flex items-center gap-3 cursor-pointer"
-              onClick={() => onNavigate('/')}
-            >
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">AnimeVerse</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Tu mundo otaku</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation Desktop */}
-          <nav className="hidden lg:flex items-center space-x-1">
-            {navigationItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => onNavigate(item.href)}
-                className="relative flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <item.icon className="w-4 h-4" />
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Search */}
-          <div className="flex-1 max-w-md mx-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Buscar anime, manga, personajes..."
-              />
-            </div>
-          </div>
-
-          {/* Right Side Actions */}
-          <div className="flex items-center gap-2">
-            {/* Theme Toggle */}
-            <button
-              onClick={onToggleTheme}
-              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>
-
-            {currentUser ? (
-              <>
-                {/* Notifications - Solo mostrar campana si hay usuario logueado */}
-                <button className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                  <Bell className="w-5 h-5" />
-                  {unreadNotifications > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                    </span>
-                  )}
-                </button>
-
-                {/* User Menu */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <img
-                      src={currentUser.avatar}
-                      alt={currentUser.username}
-                      className="w-8 h-8 rounded-full"
-                    />
-                    <div className="hidden md:block text-left">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {currentUser.username}
-                        </span>
-                        {currentUser.verified && <Crown className="w-3 h-3 text-yellow-500" />}
-                      </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        Nivel {currentUser.level}
-                      </span>
-                    </div>
-                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                  </button>
-
-                  {showUserMenu && (
-                    <UserDropdown 
-                      user={currentUser} 
-                      onNavigate={onNavigate}
-                      onClose={() => setShowUserMenu(false)}
-                    />
-                  )}
-                </div>
-              </>
-            ) : (
-              <button
-                onClick={onAuthModal}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Iniciar Sesión
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          <div className="container mx-auto px-4 py-4">
-            <nav className="space-y-2">
-              {navigationItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onNavigate(item.href);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
-      )}
-    </header>
-  );
-};
-
-// Dropdown del usuario
-const UserDropdown = ({ user, onNavigate, onClose }) => {
-  return (
-    <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 z-50">
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3">
-          <img src={user.avatar} alt={user.username} className="w-10 h-10 rounded-full" />
-          <div>
-            <div className="flex items-center gap-1">
-              <span className="font-medium text-gray-900 dark:text-white">{user.username}</span>
-              {user.verified && <Crown className="w-4 h-4 text-yellow-500" />}
-            </div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">Nivel {user.level}</span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="py-2">
-        <button
-          onClick={() => { onNavigate(`/user/${user.username}`); onClose(); }}
-          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-        >
-          <User className="w-4 h-4" />
-          Mi Perfil
-        </button>
-        <button
-          onClick={() => { onNavigate('/settings'); onClose(); }}
-          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-        >
-          <Settings className="w-4 h-4" />
-          Configuración
-        </button>
-        <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-          <LogOut className="w-4 h-4" />
-          Cerrar Sesión
-        </button>
-      </div>
-    </div>
   );
 };
 
