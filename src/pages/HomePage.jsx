@@ -53,6 +53,7 @@ const Homepage = () => {
 
       try {
         const { trending, topManga } = await animeDataService.getHomepageData();
+        const recent = await animeDataService.getLatestChapters(8);
 
         setTrendingAnime(
           trending.map((anime) => ({
@@ -86,6 +87,18 @@ const Homepage = () => {
             rating: manga.score,
             chapters: manga.chapters,
             status: manga.status,
+          }))
+        );
+
+        setLatestChapters(
+          recent.map((manga) => ({
+            id: manga.mal_id,
+            mangaTitle: manga.title,
+            image: manga.images?.jpg?.image_url,
+            chapterNumber: manga.chapters || 0,
+            chapterTitle: manga.title,
+            pages: manga.volumes ? manga.volumes * 20 : 0,
+            releaseTime: manga.published?.string || ''
           }))
         );
       } catch (error) {
