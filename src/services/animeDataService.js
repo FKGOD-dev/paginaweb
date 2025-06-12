@@ -171,6 +171,22 @@ class AnimeDataService {
     return await this.apiRequest('/characters', params);
   }
 
+  // Últimos capítulos de manga
+  async getLatestChapters(limit = 8) {
+    try {
+      const data = await this.apiRequest('/manga', {
+        order_by: 'published',
+        sort: 'desc',
+        limit,
+        sfw: true
+      });
+      return data.data || [];
+    } catch (error) {
+      console.error('Error fetching latest chapters:', error);
+      return [];
+    }
+  }
+
   // Datos para la homepage
   async getHomepageData() {
     try {
