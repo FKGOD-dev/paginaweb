@@ -1,11 +1,16 @@
 # Dependencies
 node_modules/
-/.pnp
-.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Production builds
-/dist
-/build
+# Build outputs
+dist/
+build/
+out/
+*.local
 
 # Environment variables
 .env
@@ -13,13 +18,6 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
 # Runtime data
 pids
@@ -30,18 +28,23 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
-
-# nyc test coverage
 .nyc_output
 
 # Dependency directories
+node_modules/
 jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
 
 # Optional npm cache directory
 .npm
 
 # Optional eslint cache
 .eslintcache
+
+# Optional stylelint cache
+.stylelintcache
 
 # Microbundle cache
 .rpt2_cache/
@@ -67,7 +70,6 @@ jspm_packages/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
 .cache/
@@ -76,37 +78,205 @@ public
 # Storybook build outputs
 .out
 .storybook-out
+storybook-static
 
 # Temporary folders
 tmp/
 temp/
 
+# Editor directories and files
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
 # Logs
 logs
 *.log
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# Vite
-dist-ssr
-*.local
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
 
-# PWA files
-**/sw.js
-**/workbox-*.js
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript v1 declaration files
+typings/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.test
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+# Comment in the public line in if your project uses Gatsby and *not* Next.js
+# https://nextjs.org/blog/next-9-1#public-directory-support
+# public
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Custom project files
+/src/assets/temp/
+/src/assets/uploads/
+*.backup
+*.tmp
+.vscode/settings.json
+
+# Testing
+coverage/
+.jest/
+__tests__/__snapshots__/
+
+# Bundle analysis
+stats.html
+bundle-analyzer-report.html
 
 # Database
 *.db
 *.sqlite
+*.sqlite3
 
-# OS generated files
-Thumbs.db
+# API Keys and sensitive data
+config/keys.js
+config/production.json
+
+# Uploaded content
+uploads/
+user-content/
+avatars/
+banners/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# Local development
+.local/
+dev-data/
+
+# Docker
+Dockerfile.dev
+docker-compose.override.yml
+
+# PWA
+workbox-*.js
+sw.js
+sw.js.map
+
+# Storybook
+storybook-static/
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Vercel
+.vercel
+
+# Netlify
+.netlify/
+
+# Sentry
+.sentryclirc
+
+# Local data files
+data/
+mock-data/
+test-data/
