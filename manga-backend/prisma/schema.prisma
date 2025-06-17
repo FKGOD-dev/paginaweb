@@ -3,167 +3,230 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id              Int             @id @default(autoincrement())
-  username        String          @unique
-  email           String          @unique
-  password        String
-  avatar          String?
-  level           Int             @default(1)
-  xp              Int             @default(0)
-  badges          String[]
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  
-  lists           List[]
-  notifications   Notification[]
-  comments        Comment[]
-  reviews         Review[]
-  chapters        Chapter[]       @relation("ChapterUploader")
-  
+  id                  Int            @id @default(autoincrement())
+  username            String         @unique
+  email               String         @unique
+  password            String
+  avatar              String?
+  level               Int            @default(1)
+  xp                  Int            @default(0)
+  experience          Int            @default(0)
+  badges              String[]
+  role                String         @default("user")
+  isActive            Boolean        @default(true)
+  isVerified          Boolean        @default(false)
+  isProfilePublic     Boolean        @default(true)
+  bio                 String?
+  website             String?
+  location            String?
+  favoriteGenres      String[]
+  verificationToken   String?
+  resetPasswordToken  String?
+  resetPasswordExpiry DateTime?
+  lastActiveAt        DateTime?
+  deletedAt           DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  chapters            Chapter[]      @relation("ChapterUploader")
+  comments            Comment[]
+  favorites           Favorite[]
+  lists               List[]
+  notifications       Notification[]
+  refreshTokens       RefreshToken[]
+  reviews             Review[]
+
   @@map("users")
 }
 
 model Manga {
-  id                Int         @id @default(autoincrement())
+  id                Int        @id @default(autoincrement())
   title             String
   titleEnglish      String?
+  alternativeTitle  String?
   alternativeTitles String[]
   author            String
   artist            String?
   genres            String[]
   tags              String[]
-  status            String      @default("ongoing")
-  type              String      @default("manga")
+  status            String     @default("ongoing")
+  type              String     @default("manga")
   mediaType         String?
   synopsis          String
-  coverImage        String
+  coverImage        String?
+  cover             String?
   bannerImage       String?
-  rating            Float       @default(0)
-  ratingCount       Int         @default(0)
-  views             Int         @default(0)
-  favorites         Int         @default(0)
+  rating            Float      @default(0)
+  ratingCount       Int        @default(0)
+  views             Int        @default(0)
+  favoriteCount     Int        @default(0)
+  totalChapters     Int?
   releaseYear       Int?
   year              Int?
-  language          String      @default("es")
-  isAdult           Boolean     @default(false)
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  
+  language          String     @default("es")
+  isAdult           Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
   chapters          Chapter[]
   comments          Comment[]
-  reviews           Review[]
+  favorites         Favorite[]
   listItems         ListItem[]
-  
+  reviews           Review[]
+
+  @@index([author], map: "idx_mangas_author")
+  @@index([genres], map: "idx_mangas_genres", type: Gin)
+  @@index([rating], map: "idx_mangas_rating")
+  @@index([title], map: "idx_mangas_title")
+  @@index([views], map: "idx_mangas_views")
   @@map("mangas")
 }
 
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  mangaId   Int
+  status    String   @default("reading")
+  rating    Float?
+  review    String?
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  manga     Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mangaId])
+  @@index([mangaId], map: "idx_favorites_manga_id")
+  @@index([userId], map: "idx_favorites_user_id")
+  @@map("favorites")
+}
+
 model Chapter {
-  id          Int      @id @default(autoincrement())
-  mangaId     Int
-  number      Int
-  title       String?
-  pages       String[]
-  views       Int      @default(0)
-  uploadedBy  Int?
-  createdAt   DateTime @default(now())
-  
-  manga       Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
-  uploader    User?    @relation("ChapterUploader", fields: [uploadedBy], references: [id])
-  comments    Comment[]
-  
+  id         Int       @id @default(autoincrement())
+  mangaId    Int
+  number     Int
+  title      String?
+  pages      String[]
+  views      Int       @default(0)
+  uploadedBy Int?
+  createdAt  DateTime  @default(now())
+  manga      Manga     @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  uploader   User?     @relation("ChapterUploader", fields: [uploadedBy], references: [id])
+  comments   Comment[]
+
   @@map("chapters")
 }
 
 model Comment {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  mangaId     Int?
-  chapterId   Int?
-  parentId    Int?
-  content     String
-  likes       Int      @default(0)
-  dislikes    Int      @default(0)
-  likedBy     Int[]
-  dislikedBy  Int[]
-  isSpoiler   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  manga       Manga?   @relation(fields: [mangaId], references: [id], onDelete: Cascade)
-  chapter     Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  parent      Comment? @relation("CommentReplies", fields: [parentId], references: [id])
-  replies     Comment[] @relation("CommentReplies")
-  
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  mangaId    Int?
+  chapterId  Int?
+  parentId   Int?
+  content    String
+  likes      Int       @default(0)
+  dislikes   Int       @default(0)
+  likedBy    Int[]
+  dislikedBy Int[]
+  isSpoiler  Boolean   @default(false)
+  isEdited   Boolean   @default(false)
+  isDeleted  Boolean   @default(false)
+  editedAt   DateTime?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  chapter    Chapter?  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  manga      Manga?    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  parent     Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies    Comment[] @relation("CommentReplies")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([chapterId], map: "idx_comments_chapter_id")
+  @@index([mangaId], map: "idx_comments_manga_id")
+  @@index([userId], map: "idx_comments_user_id")
   @@map("comments")
 }
 
 model Review {
-  id              Int      @id @default(autoincrement())
-  userId          Int
-  mangaId         Int
-  rating          Int
-  title           String
-  content         String
-  likes           Int      @default(0)
-  helpfulVotes    Int      @default(0)
-  createdAt       DateTime @default(now())
-  
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  manga           Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
-  
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  mangaId      Int
+  rating       Int
+  title        String
+  content      String
+  likes        Int      @default(0)
+  helpfulVotes Int      @default(0)
+  createdAt    DateTime @default(now())
+  manga        Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, mangaId])
   @@map("reviews")
 }
 
 model List {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   name        String
   description String?
   userId      Int
-  isPublic    Boolean  @default(true)
-  upvotes     Int      @default(0)
-  downvotes   Int      @default(0)
-  views       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPublic    Boolean    @default(true)
+  upvotes     Int        @default(0)
+  downvotes   Int        @default(0)
+  views       Int        @default(0)
+  likes       Int        @default(0)
+  category    String     @default("collection")
+  tags        String[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   items       ListItem[]
-  
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("lists")
 }
 
 model ListItem {
-  id        Int         @id @default(autoincrement())
-  listId    Int
-  mangaId   Int
-  type      String
-  addedAt   DateTime    @default(now())
-  
-  list      List        @relation(fields: [listId], references: [id], onDelete: Cascade)
-  manga     Manga       @relation(fields: [mangaId], references: [id], onDelete: Cascade)
-  
+  id      Int      @id @default(autoincrement())
+  listId  Int
+  mangaId Int
+  type    String?
+  order   Int      @default(1)
+  note    String?
+  rating  Float?
+  addedAt DateTime @default(now())
+  list    List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  manga   Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
   @@unique([listId, mangaId])
   @@map("list_items")
 }
 
 model Notification {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    Int
   type      String
   title     String
   message   String
-  icon      String   @default("🔔")
-  isRead    Boolean  @default(false)
+  icon      String    @default("🔔")
+  isRead    Boolean   @default(false)
   relatedId Int?
-  createdAt DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("notifications")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
 }

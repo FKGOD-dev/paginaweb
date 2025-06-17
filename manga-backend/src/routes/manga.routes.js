@@ -46,6 +46,14 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
+const optionalAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    req.user = { id: 1, role: 'user' }; // Mock user
+  }
+  next();
+};
+
 // Middleware de admin
 const requireAdmin = (req, res, next) => {
   if (req.user.role !== 'admin') {
@@ -55,7 +63,7 @@ const requireAdmin = (req, res, next) => {
 };
 
 // GET /api/manga - Lista paginada de mangas
-router.get('/', async (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -121,7 +129,8 @@ router.get('/', async (req, res) => {
             select: {
               chapters: true,
               favorites: true,
-              reviews: true
+              reviews: true,
+              comments: true
             }
           }
         }
@@ -129,12 +138,35 @@ router.get('/', async (req, res) => {
       prisma.manga.count({ where })
     ]);
 
+    // Si hay usuario autenticado, verificar favoritos
+    let userFavorites = [];
+    if (req.user) {
+      const mangaIds = mangas.map(m => m.id);
+      userFavorites = await prisma.favorite.findMany({
+        where: {
+          userId: req.user.id,
+          mangaId: { in: mangaIds }
+        },
+        select: { mangaId: true, status: true }
+      });
+    }
+
+    // Agregar información de favoritos
+    const mangasWithFavorites = mangas.map(manga => {
+      const userFavorite = userFavorites.find(fav => fav.mangaId === manga.id);
+      return {
+        ...manga,
+        isFavorite: !!userFavorite,
+        favoriteStatus: userFavorite?.status || null
+      };
+    });
+
     const totalPages = Math.ceil(total / limit);
 
     res.json({
       success: true,
       data: {
-        mangas,
+        mangas: mangasWithFavorites,
         pagination: {
           current: page,
           total: totalPages,
@@ -150,16 +182,17 @@ router.get('/', async (req, res) => {
     console.error('Error fetching mangas:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Error interno del servidor' 
+      error: 'Error interno del servidor',
+      details: error.message
     });
   }
 });
 
 // GET /api/manga/:id - Manga individual
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id; // Del middleware de auth si existe
+    const userId = req.user?.id;
 
     const manga = await prisma.manga.findUnique({
       where: { id: parseInt(id) },
@@ -181,7 +214,8 @@ router.get('/:id', async (req, res) => {
           select: {
             chapters: true,
             favorites: true,
-            reviews: true
+            reviews: true,
+            comments: true
           }
         }
       }
@@ -202,6 +236,7 @@ router.get('/:id', async (req, res) => {
 
     // Verificar si está en favoritos del usuario (si está autenticado)
     let isFavorite = false;
+    let favoriteStatus = null;
     if (userId) {
       const favorite = await prisma.favorite.findFirst({
         where: {
@@ -210,6 +245,7 @@ router.get('/:id', async (req, res) => {
         }
       });
       isFavorite = !!favorite;
+      favoriteStatus = favorite?.status || null;
     }
 
     // Obtener mangas similares
@@ -226,7 +262,17 @@ router.get('/:id', async (req, res) => {
         ]
       },
       take: 6,
-      orderBy: { rating: 'desc' }
+      orderBy: { rating: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        cover: true,
+        coverImage: true,
+        author: true,
+        rating: true,
+        type: true,
+        genres: true
+      }
     });
 
     res.json({
@@ -234,6 +280,7 @@ router.get('/:id', async (req, res) => {
       data: {
         ...manga,
         isFavorite,
+        favoriteStatus,
         similarMangas
       }
     });
@@ -242,7 +289,86 @@ router.get('/:id', async (req, res) => {
     console.error('Error fetching manga details:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Error interno del servidor' 
+      error: 'Error interno del servidor',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/manga/trending - Mangas trending
+router.get('/trending', optionalAuth, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const period = req.query.period || 'week'; // day, week, month
+
+    let dateFilter = new Date();
+    switch (period) {
+      case 'day':
+        dateFilter.setDate(dateFilter.getDate() - 1);
+        break;
+      case 'month':
+        dateFilter.setMonth(dateFilter.getMonth() - 1);
+        break;
+      default: // week
+        dateFilter.setDate(dateFilter.getDate() - 7);
+    }
+
+    const trendingMangas = await prisma.manga.findMany({
+      where: {
+        updatedAt: {
+          gte: dateFilter
+        }
+      },
+      orderBy: [
+        { views: 'desc' },
+        { rating: 'desc' }
+      ],
+      take: limit,
+      include: {
+        _count: {
+          select: {
+            chapters: true,
+            favorites: true,
+            comments: true
+          }
+        }
+      }
+    });
+
+    // Si hay usuario autenticado, verificar favoritos
+    let userFavorites = [];
+    if (req.user) {
+      const mangaIds = trendingMangas.map(m => m.id);
+      userFavorites = await prisma.favorite.findMany({
+        where: {
+          userId: req.user.id,
+          mangaId: { in: mangaIds }
+        },
+        select: { mangaId: true, status: true }
+      });
+    }
+
+    const mangasWithFavorites = trendingMangas.map(manga => {
+      const userFavorite = userFavorites.find(fav => fav.mangaId === manga.id);
+      return {
+        ...manga,
+        isFavorite: !!userFavorite,
+        favoriteStatus: userFavorite?.status || null
+      };
+    });
+
+    res.json({
+      success: true,
+      data: mangasWithFavorites,
+      period
+    });
+
+  } catch (error) {
+    console.error('Error fetching trending mangas:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error interno del servidor',
+      details: error.message
     });
   }
 });
@@ -281,6 +407,7 @@ router.post('/', requireAuth, requireAdmin, upload.single('cover'), async (req, 
         artist: artist || author,
         synopsis,
         cover: coverPath,
+        coverImage: coverPath,
         genres: Array.isArray(genres) ? genres : JSON.parse(genres || '[]'),
         year: parseInt(year) || new Date().getFullYear(),
         status: status || 'ongoing',
@@ -300,7 +427,8 @@ router.post('/', requireAuth, requireAdmin, upload.single('cover'), async (req, 
     console.error('Error creating manga:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Error interno del servidor' 
+      error: 'Error interno del servidor',
+      details: error.message
     });
   }
 });
@@ -347,6 +475,7 @@ router.put('/:id', requireAuth, requireAdmin, upload.single('cover'), async (req
 
     if (req.file) {
       updateData.cover = `/uploads/manga/${req.file.filename}`;
+      updateData.coverImage = `/uploads/manga/${req.file.filename}`;
     }
 
     const updatedManga = await prisma.manga.update({
@@ -364,7 +493,8 @@ router.put('/:id', requireAuth, requireAdmin, upload.single('cover'), async (req
     console.error('Error updating manga:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Error interno del servidor' 
+      error: 'Error interno del servidor',
+      details: error.message
     });
   }
 });
@@ -399,7 +529,8 @@ router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
     console.error('Error deleting manga:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Error interno del servidor' 
+      error: 'Error interno del servidor',
+      details: error.message
     });
   }
 });
@@ -408,6 +539,7 @@ router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
 router.post('/:id/favorite', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const { status = 'reading' } = req.body;
     const userId = req.user.id;
 
     const manga = await prisma.manga.findUnique({
@@ -434,6 +566,12 @@ router.post('/:id/favorite', requireAuth, async (req, res) => {
         where: { id: existingFavorite.id }
       });
 
+      // Decrementar contador
+      await prisma.manga.update({
+        where: { id: parseInt(id) },
+        data: { favoriteCount: { decrement: 1 } }
+      });
+
       res.json({
         success: true,
         isFavorite: false,
@@ -444,13 +582,21 @@ router.post('/:id/favorite', requireAuth, async (req, res) => {
       await prisma.favorite.create({
         data: {
           userId: userId,
-          mangaId: parseInt(id)
+          mangaId: parseInt(id),
+          status: status
         }
+      });
+
+      // Incrementar contador
+      await prisma.manga.update({
+        where: { id: parseInt(id) },
+        data: { favoriteCount: { increment: 1 } }
       });
 
       res.json({
         success: true,
         isFavorite: true,
+        favoriteStatus: status,
         message: 'Manga agregado a favoritos'
       });
     }
@@ -459,7 +605,8 @@ router.post('/:id/favorite', requireAuth, async (req, res) => {
     console.error('Error toggling favorite:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Error interno del servidor' 
+      error: 'Error interno del servidor',
+      details: error.message
     });
   }
 });
@@ -508,60 +655,8 @@ router.get('/:id/chapters', async (req, res) => {
     console.error('Error fetching chapters:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Error interno del servidor' 
-    });
-  }
-});
-
-// GET /api/manga/trending - Mangas trending
-router.get('/trending', async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 10;
-    const period = req.query.period || 'week'; // day, week, month
-
-    let dateFilter = new Date();
-    switch (period) {
-      case 'day':
-        dateFilter.setDate(dateFilter.getDate() - 1);
-        break;
-      case 'month':
-        dateFilter.setMonth(dateFilter.getMonth() - 1);
-        break;
-      default: // week
-        dateFilter.setDate(dateFilter.getDate() - 7);
-    }
-
-    const trendingMangas = await prisma.manga.findMany({
-      where: {
-        updatedAt: {
-          gte: dateFilter
-        }
-      },
-      orderBy: [
-        { views: 'desc' },
-        { rating: 'desc' }
-      ],
-      take: limit,
-      include: {
-        _count: {
-          select: {
-            chapters: true,
-            favorites: true
-          }
-        }
-      }
-    });
-
-    res.json({
-      success: true,
-      data: trendingMangas
-    });
-
-  } catch (error) {
-    console.error('Error fetching trending mangas:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Error interno del servidor' 
+      error: 'Error interno del servidor',
+      details: error.message
     });
   }
 });
@@ -604,7 +699,8 @@ router.get('/stats', async (req, res) => {
     console.error('Error fetching stats:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Error interno del servidor' 
+      error: 'Error interno del servidor',
+      details: error.message
     });
   }
 });
