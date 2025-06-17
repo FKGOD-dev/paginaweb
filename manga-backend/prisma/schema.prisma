@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int             @id @default(autoincrement())
+  username        String          @unique
+  email           String          @unique
+  password        String
+  avatar          String?
+  level           Int             @default(1)
+  xp              Int             @default(0)
+  badges          String[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  lists           List[]
+  notifications   Notification[]
+  comments        Comment[]
+  reviews         Review[]
+  chapters        Chapter[]       @relation("ChapterUploader")
+  
+  @@map("users")
+}
+
+model Manga {
+  id                Int         @id @default(autoincrement())
+  title             String
+  titleEnglish      String?
+  alternativeTitles String[]
+  author            String
+  artist            String?
+  genres            String[]
+  tags              String[]
+  status            String      @default("ongoing")
+  type              String      @default("manga")
+  mediaType         String?
+  synopsis          String
+  coverImage        String
+  bannerImage       String?
+  rating            Float       @default(0)
+  ratingCount       Int         @default(0)
+  views             Int         @default(0)
+  favorites         Int         @default(0)
+  releaseYear       Int?
+  year              Int?
+  language          String      @default("es")
+  isAdult           Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  chapters          Chapter[]
+  comments          Comment[]
+  reviews           Review[]
+  listItems         ListItem[]
+  
+  @@map("mangas")
+}
+
+model Chapter {
+  id          Int      @id @default(autoincrement())
+  mangaId     Int
+  number      Int
+  title       String?
+  pages       String[]
+  views       Int      @default(0)
+  uploadedBy  Int?
+  createdAt   DateTime @default(now())
+  
+  manga       Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  uploader    User?    @relation("ChapterUploader", fields: [uploadedBy], references: [id])
+  comments    Comment[]
+  
+  @@map("chapters")
+}
+
+model Comment {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  mangaId     Int?
+  chapterId   Int?
+  parentId    Int?
+  content     String
+  likes       Int      @default(0)
+  dislikes    Int      @default(0)
+  likedBy     Int[]
+  dislikedBy  Int[]
+  isSpoiler   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga       Manga?   @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  chapter     Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  parent      Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentReplies")
+  
+  @@map("comments")
+}
+
+model Review {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  mangaId         Int
+  rating          Int
+  title           String
+  content         String
+  likes           Int      @default(0)
+  helpfulVotes    Int      @default(0)
+  createdAt       DateTime @default(now())
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga           Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, mangaId])
+  @@map("reviews")
+}
+
+model List {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  userId      Int
+  isPublic    Boolean  @default(true)
+  upvotes     Int      @default(0)
+  downvotes   Int      @default(0)
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       ListItem[]
+  
+  @@map("lists")
+}
+
+model ListItem {
+  id        Int         @id @default(autoincrement())
+  listId    Int
+  mangaId   Int
+  type      String
+  addedAt   DateTime    @default(now())
+  
+  list      List        @relation(fields: [listId], references: [id], onDelete: Cascade)
+  manga     Manga       @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  
+  @@unique([listId, mangaId])
+  @@map("list_items")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String
+  title     String
+  message   String
+  icon      String   @default("🔔")
+  isRead    Boolean  @default(false)
+  relatedId Int?
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notifications")
+}
