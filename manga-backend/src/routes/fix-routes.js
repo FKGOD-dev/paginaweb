@@ -116,7 +116,7 @@ function analyzeRouteFile(filePath) {
 
 // Función principal
 function main() {
-  const routesDir = path.join(__dirname, 'routes');
+  const routesDir = __dirname;
   
   if (!fs.existsSync(routesDir)) {
     console.log('❌ Directorio de rutas no encontrado:', routesDir);

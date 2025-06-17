@@ -104,7 +104,7 @@ try {
 }
 
 // ❓ Ruta no encontrada
-app.all('*', (req, res) => {
+app.all('/*', (req, res) => {
   res.status(404).json({
     success: false,
     error: 'Endpoint no encontrado',
