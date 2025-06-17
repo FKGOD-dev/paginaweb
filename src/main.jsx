@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 // import { ReactQueryDevtools } from '@tanstack/react-query-devtools' // Comentado temporalmente
 import { Toaster } from 'sonner'
-import App from './App.jsx'
+import AppRouter from './AppRouter.jsx'
 // import { AuthProvider } from './contexts/AuthContext.jsx' // Comentado hasta crear los contextos
 // import { ThemeProvider } from './contexts/ThemeContext.jsx'
 // import { NotificationProvider } from './contexts/NotificationContext.jsx'
@@ -55,7 +55,7 @@ root.render(
           <AuthProvider>
             <NotificationProvider>
               <GameProvider> */}
-                <App />
+                <AppRouter />
                 
                 {/* Componente de notificaciones toast */}
                 <Toaster
@@ -104,3 +104,4 @@ if (import.meta.hot) {
 }
 
 export { queryClient }
+
