@@ -63,6 +63,9 @@ const getNextLevelXP = (level) => {
   return Math.pow(level, 2) * 100;
 };
 
+// ✅ RUTAS ESPECÍFICAS PRIMERO
+// ===========================
+
 // POST /api/users/register - Registro de usuario
 router.post('/register', async (req, res) => {
   try {
@@ -591,103 +594,6 @@ router.put('/profile', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/users/:userId - Obtener perfil público de usuario
-router.get('/:userId', optionalAuth, async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-      select: {
-        id: true,
-        username: true,
-        bio: true,
-        website: true,
-        location: true,
-        avatar: true,
-        favoriteGenres: true,
-        level: true,
-        experience: true,
-        isProfilePublic: true,
-        createdAt: true,
-        _count: {
-          select: {
-            favorites: true,
-            comments: true,
-            reviews: true,
-            readingProgress: true
-          }
-        }
-      }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'Usuario no encontrado'
-      });
-    }
-
-    // Verificar privacidad del perfil
-    if (!user.isProfilePublic && (!req.user || req.user.id !== user.id)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Perfil privado'
-      });
-    }
-
-    // Si el perfil es público o es el propio usuario, mostrar más detalles
-    let additionalData = {};
-    if (user.isProfilePublic || (req.user && req.user.id === user.id)) {
-      const [recentActivity, topFavorites] = await Promise.all([
-        prisma.comment.findMany({
-          where: { userId: parseInt(userId) },
-          take: 5,
-          orderBy: { createdAt: 'desc' },
-          include: {
-            manga: { select: { id: true, title: true } },
-            chapter: { select: { id: true, number: true } }
-          }
-        }),
-        prisma.favorite.findMany({
-          where: { userId: parseInt(userId) },
-          take: 6,
-          include: {
-            manga: {
-              select: { id: true, title: true, cover: true, rating: true }
-            }
-          }
-        })
-      ]);
-
-      additionalData = {
-        recentActivity,
-        topFavorites
-      };
-    }
-
-    const currentLevel = calculateLevel(user.experience);
-    const nextLevelXP = getNextLevelXP(currentLevel);
-
-    res.json({
-      success: true,
-      data: {
-        ...user,
-        level: currentLevel,
-        nextLevelXP,
-        ...additionalData
-      }
-    });
-
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor'
-    });
-  }
-});
-
 // POST /api/users/change-password - Cambiar contraseña
 router.post('/change-password', requireAuth, async (req, res) => {
   try {
@@ -1037,6 +943,106 @@ router.delete('/account', requireAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Error deleting account:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor'
+    });
+  }
+});
+
+// ✅ RUTAS CON PARÁMETROS AL FINAL
+// ================================
+
+// GET /api/users/:userId - Obtener perfil público de usuario
+router.get('/:userId', optionalAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      select: {
+        id: true,
+        username: true,
+        bio: true,
+        website: true,
+        location: true,
+        avatar: true,
+        favoriteGenres: true,
+        level: true,
+        experience: true,
+        isProfilePublic: true,
+        createdAt: true,
+        _count: {
+          select: {
+            favorites: true,
+            comments: true,
+            reviews: true,
+            readingProgress: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'Usuario no encontrado'
+      });
+    }
+
+    // Verificar privacidad del perfil
+    if (!user.isProfilePublic && (!req.user || req.user.id !== user.id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Perfil privado'
+      });
+    }
+
+    // Si el perfil es público o es el propio usuario, mostrar más detalles
+    let additionalData = {};
+    if (user.isProfilePublic || (req.user && req.user.id === user.id)) {
+      const [recentActivity, topFavorites] = await Promise.all([
+        prisma.comment.findMany({
+          where: { userId: parseInt(userId) },
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            manga: { select: { id: true, title: true } },
+            chapter: { select: { id: true, number: true } }
+          }
+        }),
+        prisma.favorite.findMany({
+          where: { userId: parseInt(userId) },
+          take: 6,
+          include: {
+            manga: {
+              select: { id: true, title: true, cover: true, rating: true }
+            }
+          }
+        })
+      ]);
+
+      additionalData = {
+        recentActivity,
+        topFavorites
+      };
+    }
+
+    const currentLevel = calculateLevel(user.experience);
+    const nextLevelXP = getNextLevelXP(currentLevel);
+
+    res.json({
+      success: true,
+      data: {
+        ...user,
+        level: currentLevel,
+        nextLevelXP,
+        ...additionalData
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
     res.status(500).json({
       success: false,
       error: 'Error interno del servidor'

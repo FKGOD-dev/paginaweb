@@ -7,7 +7,7 @@ const compression = require('compression');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs').promises;
-const { authenticateToken } = require('./middleware/auth.middleware'); // Asegurate que exista
+// const { authenticateToken } = require('./middleware/auth.middleware'); // No necesario aquí
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -75,26 +75,22 @@ try {
 
   // 👉 Montar rutas (ORDEN IMPORTANTE)
 
-  // 🔓 Públicas
+  // 🔓 Rutas públicas (SIN middleware de autenticación global)
   app.use('/api/auth', authRoutes);
-
-  // ✅ Específicas primero (antes que /:id)
-
-
-  // 📚 Rutas generales
+  app.use('/api/users', userRoutes);              // ✅ CAMBIADO: Sin authenticateToken
   app.use('/api/manga', mangaRoutes);
   app.use('/api/search', searchRoutes);
   app.use('/api/comments', commentsRoutes);
 
-  // 🔐 Requieren autenticación
-  app.use('/api/users', authenticateToken, userRoutes);
-  app.use('/api/upload', authenticateToken, uploadRoutes);
-  app.use('/api/lists', authenticateToken, listsRoutes);
-  app.use('/api/favorites', authenticateToken, favoritesRoutes);
-  app.use('/api/notifications', authenticateToken, notificationsRoutes);
+  // 🔐 Rutas que SÍ requieren autenticación global
+  // (Solo si NO manejan autenticación internamente)
+  app.use('/api/upload', uploadRoutes);           // ✅ CAMBIADO: Sin authenticateToken 
+  app.use('/api/lists', listsRoutes);             // ✅ CAMBIADO: Sin authenticateToken
+  app.use('/api/favorites', favoritesRoutes);     // ✅ CAMBIADO: Sin authenticateToken
+  app.use('/api/notifications', notificationsRoutes); // ✅ CAMBIADO: Sin authenticateToken
 
-  // 🛡 Admin
-  app.use('/api/admin', authenticateToken, adminRoutes);
+  // 🛡 Admin (mantiene protección si es necesario)
+  app.use('/api/admin', adminRoutes);             // ✅ CAMBIADO: Sin authenticateToken
 
   console.log('✅ All routes loaded successfully');
 
@@ -104,7 +100,7 @@ try {
 }
 
 // ❓ Ruta no encontrada
-app.all('/*', (req, res) => {
+app.all('*', (req, res) => {
   res.status(404).json({
     success: false,
     error: 'Endpoint no encontrado',
@@ -152,5 +148,7 @@ const startServer = async () => {
 if (require.main === module) {
   startServer();
 }
+const listEndpoints = require('express-list-endpoints');
+console.log(listEndpoints(app));
 
 module.exports = app;

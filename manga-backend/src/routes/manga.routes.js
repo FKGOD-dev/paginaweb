@@ -187,6 +187,82 @@ router.get('/', optionalAuth, async (req, res) => {
     });
   }
 });
+router.get('/trending', optionalAuth, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const period = req.query.period || 'week'; // day, week, month
+
+    let dateFilter = new Date();
+    switch (period) {
+      case 'day':
+        dateFilter.setDate(dateFilter.getDate() - 1);
+        break;
+      case 'month':
+        dateFilter.setMonth(dateFilter.getMonth() - 1);
+        break;
+      default: // week
+        dateFilter.setDate(dateFilter.getDate() - 7);
+    }
+
+    const trendingMangas = await prisma.manga.findMany({
+      where: {
+        updatedAt: {
+          gte: dateFilter
+        }
+      },
+      orderBy: [
+        { views: 'desc' },
+        { rating: 'desc' }
+      ],
+      take: limit,
+      include: {
+        _count: {
+          select: {
+            chapters: true,
+            favorites: true,
+            comments: true
+          }
+        }
+      }
+    });
+
+    // Si hay usuario autenticado, verificar favoritos
+    let userFavorites = [];
+    if (req.user) {
+      const mangaIds = trendingMangas.map(m => m.id);
+      userFavorites = await prisma.favorite.findMany({
+        where: {
+          userId: req.user.id,
+          mangaId: { in: mangaIds }
+        },
+        select: { mangaId: true, status: true }
+      });
+    }
+
+    const mangasWithFavorites = trendingMangas.map(manga => {
+      const userFavorite = userFavorites.find(fav => fav.mangaId === manga.id);
+      return {
+        ...manga,
+        isFavorite: !!userFavorite,
+        favoriteStatus: userFavorite?.status || null
+      };
+    });
+
+    res.json({
+      success: true,
+      data: mangasWithFavorites,
+      period
+    });
+
+  } catch (error) {
+    console.error('Error fetching trending mangas:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error interno del servidor',
+      details: error.message
+    });
+  }
+});
 
 // GET /api/manga/:id - Manga individual
 router.get('/:id', optionalAuth, async (req, res) => {
@@ -294,85 +370,6 @@ router.get('/:id', optionalAuth, async (req, res) => {
     });
   }
 });
-
-// GET /api/manga/trending - Mangas trending
-router.get('/trending', optionalAuth, async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 10;
-    const period = req.query.period || 'week'; // day, week, month
-
-    let dateFilter = new Date();
-    switch (period) {
-      case 'day':
-        dateFilter.setDate(dateFilter.getDate() - 1);
-        break;
-      case 'month':
-        dateFilter.setMonth(dateFilter.getMonth() - 1);
-        break;
-      default: // week
-        dateFilter.setDate(dateFilter.getDate() - 7);
-    }
-
-    const trendingMangas = await prisma.manga.findMany({
-      where: {
-        updatedAt: {
-          gte: dateFilter
-        }
-      },
-      orderBy: [
-        { views: 'desc' },
-        { rating: 'desc' }
-      ],
-      take: limit,
-      include: {
-        _count: {
-          select: {
-            chapters: true,
-            favorites: true,
-            comments: true
-          }
-        }
-      }
-    });
-
-    // Si hay usuario autenticado, verificar favoritos
-    let userFavorites = [];
-    if (req.user) {
-      const mangaIds = trendingMangas.map(m => m.id);
-      userFavorites = await prisma.favorite.findMany({
-        where: {
-          userId: req.user.id,
-          mangaId: { in: mangaIds }
-        },
-        select: { mangaId: true, status: true }
-      });
-    }
-
-    const mangasWithFavorites = trendingMangas.map(manga => {
-      const userFavorite = userFavorites.find(fav => fav.mangaId === manga.id);
-      return {
-        ...manga,
-        isFavorite: !!userFavorite,
-        favoriteStatus: userFavorite?.status || null
-      };
-    });
-
-    res.json({
-      success: true,
-      data: mangasWithFavorites,
-      period
-    });
-
-  } catch (error) {
-    console.error('Error fetching trending mangas:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Error interno del servidor',
-      details: error.message
-    });
-  }
-});
-
 // POST /api/manga - Crear nuevo manga (solo admin)
 router.post('/', requireAuth, requireAdmin, upload.single('cover'), async (req, res) => {
   try {
